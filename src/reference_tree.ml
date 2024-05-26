@@ -22,6 +22,7 @@ type completion_help_type =
 type ref_node_data = {
     node_type: node_type;
     constraints: value_constraint list;
+    constraint_group: value_constraint list;
     constraint_error_message: string;
     completion_help: completion_help_type list;
     help: string;
@@ -44,6 +45,7 @@ exception Validation_error of string
 let default_data = {
     node_type = Other;
     constraints = [];
+    constraint_group = [];
     constraint_error_message = "Invalid value";
     completion_help = [];
     help = "No help available";
@@ -137,6 +139,21 @@ let load_constraint_from_xml d c =
         | _ -> raise (Bad_interface_definition "Malformed constraint")
     in Xml.fold aux d c
 
+let load_constraint_group_from_xml d c =
+    let aux d c =
+        match c with
+        | Xml.Element ("regex", _, [Xml.PCData s]) ->
+            let cs = (Regex s) :: d.constraint_group in
+            {d with constraint_group=cs}
+        | Xml.Element ("validator", [("name", n); ("argument", a)], _) ->
+            let cs = (External (n, Some a)) :: d.constraint_group in
+            {d with constraint_group=cs}
+        | Xml.Element ("validator", [("name", n)], _) ->
+            let cs = (External (n, None)) :: d.constraint_group in
+            {d with constraint_group=cs}
+        | _ -> raise (Bad_interface_definition "Malformed constraint")
+    in Xml.fold aux d c
+
 let data_from_xml d x =
     let aux d x =
         match x with
@@ -149,6 +166,7 @@ let data_from_xml d x =
         | Xml.Element ("constraintErrorMessage", _, [Xml.PCData s]) ->
             {d with constraint_error_message=s}
         | Xml.Element ("constraint", _, _) -> load_constraint_from_xml d x
+        | Xml.Element ("constraintGroup", _, _) -> load_constraint_group_from_xml d x
         | Xml.Element ("priority", _, [Xml.PCData i]) ->
             {d with priority=Some i}
         | Xml.Element ("hidden", _, _) -> {d with hidden=true}
