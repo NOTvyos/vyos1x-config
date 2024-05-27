@@ -17,6 +17,7 @@ type completion_help_type =
 type ref_node_data = {
     node_type: node_type;
     constraints: value_constraint list;
+    constraint_group: value_constraint list;
     constraint_error_message: string;
     completion_help: completion_help_type list;
     help: string;
